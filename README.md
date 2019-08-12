@@ -24,19 +24,11 @@ outputs = [{
     }]
 ```
 
-## Running the node
+## use as a lib
 
-To start a node uncomment the following line in the dev.exs
-
-    # config :bitcoin, :node, []
-
-To avoid abusing the network you may want to only connect to your local node e.g.:
-
-    config :bitcoin, :node, [
-      connect: [{127,0,0,1}]
-    ]
-
-Check (config.exs)[config/config.exs] for more details.
+```
+{:bitcoin, github: "coinscript/bitcoinsv-elixir"}
+```
 
 ## License
 
