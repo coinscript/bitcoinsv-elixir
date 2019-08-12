@@ -85,16 +85,29 @@ defmodule Bitcoin.Tx.TxMaker do
   end
 
   def construct_output_block(outputs) do
-    for {dest, amount} <- outputs do
-      script = [
-        0x76, 0xa9, 0x14, address_to_public_key_hash(dest), 0x88, 0xac
-      ] |> join()
+    Enum.map(outputs, fn output ->
+      script = case output do
+        {dest, amount} ->
+          [
+            0x76, 0xa9, 0x14, address_to_public_key_hash(dest), 0x88, 0xac
+          ] |> join()
+        ## what is "safe" type: https://blog.moneybutton.com/2019/08/02/money-button-now-supports-safe-on-chain-data/
+        %{type: "safe", data: data} ->
+          data = if is_list(data), do: data, else: [data]
+          [
+            0, 106, (for x <- data, do: [byte_size(x), x])
+          ] |> join()
+      end
+      amount = case output do
+        {_dest, amount} -> amount
+        %{type: "safe"} -> 0
+      end
       [
         amount |> to_bytes(8, :little),
         int_to_varint(len(script)),
         script
       ]
-    end |> join()
+    end) |> join()
   end
 
   def newTxIn(script, script_len, txid, txindex, amount) do

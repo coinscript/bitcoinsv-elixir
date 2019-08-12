@@ -4,6 +4,11 @@ defmodule Bitcoin.Cli do
 
   use GenServer
 
+  def new_wallet() do
+    private_key = Key.new_private_key()
+    new_wallet(bin2hex(private_key))
+  end
+
   # hex_string -> wallet
   def new_wallet(hex_private_key) do
     {:ok, pid} = GenServer.start_link(__MODULE__, {:hex_private_key, hex_private_key})
@@ -23,7 +28,7 @@ defmodule Bitcoin.Cli do
       balance: nil,
       utxos: [],
       utxo_count: 0
-    }
+    } |> IO.inspect()
     {:ok, state}
   end
 
@@ -51,14 +56,17 @@ defmodule Bitcoin.Cli do
 
 
   def handle_call({:transfer, outputs, fee_per_byte}, _, state) do
-    sum_of_outputs = Enum.reduce(outputs, 0, fn {_, value}, acc -> acc + value end)
+    sum_of_outputs = Enum.reduce(outputs, 0, fn
+      {_, value}, acc -> acc + value
+      _, acc -> acc
+    end)
 
     if sum_of_outputs >= state.balance do
       raise("insufficient balance")
     end
 
     output_count = length(outputs)
-    {spendings, outputs} = case get_enough_utxos(state.utxos, sum_of_outputs, output_count, [], 0, fee_per_byte) do
+    {spendings, outputs} = case get_enough_utxos(state.utxos, sum_of_outputs, output_count, [], 0, fee_per_byte, get_opreturn_size(outputs)) do
       {:no_change, spendings} ->
         {spendings, outputs}
       {:change, change, spendings} ->
@@ -77,11 +85,23 @@ defmodule Bitcoin.Cli do
     Enum.reduce(utxos, 0, fn x, acc -> acc + x.amount end)
   end
 
+  defp get_opreturn_size(outputs) do
+    outputs
+    |> Enum.reduce(0, fn x, acc ->
+      size = case x do
+        %{type: "safe", data: data} ->
+          data = if is_list(data), do: Enum.join(data), else: data
+          byte_size(data)
+        {_, _} ->
+          0
+      end
+      acc + size
+    end)
+  end
 
 
-
-  defp get_enough_utxos(utxos, sum_of_outputs, output_count, spendings, spending_count, fee_per_byte) do
-    fee_with_change = get_fee(spending_count, output_count + 1, fee_per_byte)
+  defp get_enough_utxos(utxos, sum_of_outputs, output_count, spendings, spending_count, fee_per_byte, opreturn_size) do
+    fee_with_change = get_fee(spending_count, output_count + 1, fee_per_byte, opreturn_size)
     # fee_without_change = get_fee(spending_count, output_count)
     sum_of_spendings = get_sum_of_utxos(spendings)
 
@@ -95,7 +115,7 @@ defmodule Bitcoin.Cli do
         {:error, "insufficient balance"}
 
       sum_of_spendings <= fee_with_change + sum_of_outputs ->
-        get_enough_utxos(tl(utxos), sum_of_outputs, output_count, [hd(utxos) | spendings], spending_count + 1, fee_per_byte)
+        get_enough_utxos(tl(utxos), sum_of_outputs, output_count, [hd(utxos) | spendings], spending_count + 1, fee_per_byte, opreturn_size)
 
       true ->
         change = sum_of_spendings - (fee_with_change + sum_of_outputs)
@@ -109,8 +129,16 @@ defmodule Bitcoin.Cli do
   end
 
   defp hex2bin(x), do: Binary.from_hex(x)
+  defp bin2hex(x), do: Binary.to_hex(x)
 
-  defp get_fee(n_in, n_out, fee_per_byte) do
-    TxMaker.estimate_tx_fee(n_in, n_out, fee_per_byte, true)
+  defp get_fee(n_in, n_out, fee_per_byte, opreturn_size) do
+    TxMaker.estimate_tx_fee(n_in, n_out, fee_per_byte, true, opreturn_size)
+  end
+
+  def test do
+    w = new_wallet "8b559565ec6754895b6f378fa935740e34bb7d9b515ade65c6dc06081e3b63c7"
+    get_balance w
+    outputs = [%{type: "safe", data: "我真牛🍺 "}]
+    transfer w, outputs
   end
 end
