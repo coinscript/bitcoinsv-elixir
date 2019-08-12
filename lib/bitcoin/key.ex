@@ -3,6 +3,11 @@ defmodule Bitcoin.Key do
   alias Bitcoin.Script
   alias Bitcoin.Crypto
 
+  def new_private_key() do
+    {_, priv} = :crypto.generate_key(:ecdh, :secp256k1)
+    priv
+  end
+
   def privkey_to_pubkey(priv) do
     {publickey, _priv} = :crypto.generate_key(:ecdh, :secp256k1, priv)
     compress(publickey)

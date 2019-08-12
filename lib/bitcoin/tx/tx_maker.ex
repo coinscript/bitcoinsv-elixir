@@ -18,6 +18,11 @@ defmodule Bitcoin.Tx.TxMaker do
       end
       utxos
     end
+
+    # def balance(_addr) do
+    #   # TODO
+    #   0
+    # end
   end
 
   def broadcast(hex) do
@@ -71,25 +76,38 @@ defmodule Bitcoin.Tx.TxMaker do
     for txin <- inputs do
       join([
         txin.txid,
-        txin.txindex |> IO.inspect(label: "txindex"),
-        txin.script_len |> IO.inspect(label: 3),
-        txin.script |> IO.inspect(label: 4),
+        txin.txindex,
+        txin.script_len,
+        txin.script,
         sequence()
       ])
     end |> join()
   end
 
   def construct_output_block(outputs) do
-    for {dest, amount} <- outputs do
-      script = [
-        0x76, 0xa9, 0x14, address_to_public_key_hash(dest), 0x88, 0xac
-      ] |> join()
+    Enum.map(outputs, fn output ->
+      script = case output do
+        {dest, amount} ->
+          [
+            0x76, 0xa9, 0x14, address_to_public_key_hash(dest), 0x88, 0xac
+          ] |> join()
+        ## what is "safe" type: https://blog.moneybutton.com/2019/08/02/money-button-now-supports-safe-on-chain-data/
+        %{type: "safe", data: data} ->
+          data = if is_list(data), do: data, else: [data]
+          [
+            0, 106, (for x <- data, do: [byte_size(x), x])
+          ] |> join()
+      end
+      amount = case output do
+        {_dest, amount} -> amount
+        %{type: "safe"} -> 0
+      end
       [
         amount |> to_bytes(8, :little),
-        int_to_varint(len(script) |> IO.inspect(label: "scriptlen")),
+        int_to_varint(len(script)),
         script
       ]
-    end |> join()
+    end) |> join()
   end
 
   def newTxIn(script, script_len, txid, txindex, amount) do
@@ -123,8 +141,8 @@ defmodule Bitcoin.Tx.TxMaker do
 
     inputs =
       for unspent <- unspents do
-        script = hex_to_bytes(unspent.script) |> IO.inspect(label: 1)
-        script_len = int_to_varint(len(script)) |> IO.inspect(label: 2)
+        script = hex_to_bytes(unspent.script)
+        script_len = int_to_varint(len(script))
         txid = hex_to_bytes(unspent.txid) |> Binary.reverse()
         txindex = unspent.txindex |> to_bytes(4, :little)
         amount = unspent.amount |> to_bytes(8, :little)
@@ -221,12 +239,11 @@ defmodule Bitcoin.Tx.TxMaker do
   def quick_send() do
     priv = "1AEB4829D9E92290EF35A3812B363B0CA87DFDA2B628060648339E9452BC923A" |> Binary.from_hex()
     addr = "1EMHJsiXjZmffBUWevGS5mWdoacmpt8vdH"
-    utxos = Resource.utxos(addr) |> IO.inspect()
+    utxos = [Resource.utxos(addr) |> IO.inspect() |> Enum.max_by(fn x -> x.amount end)]
     outputs = [
       {addr, hd(utxos).amount - 230}
     ]
     create_p2pkh_transaction(priv, utxos, outputs)
-    |> IO.inspect()
     |> broadcast()
   end
 

@@ -11,6 +11,7 @@
   "ex_doc": {:hex, :ex_doc, "0.15.1", "d5f9d588fd802152516fccfdb96d6073753f77314fcfee892b15b6724ca0d596", [:mix], [{:earmark, "~> 1.1", [hex: :earmark, repo: "hexpm", optional: false]}], "hexpm"},
   "exlager": {:git, "https://github.com/khia/exlager.git", "dfee7fffcbb44f9ecd79f1237bae0f170bb27d87", [branch: "master"]},
   "exts": {:hex, :exts, "0.3.4", "ec2af096ab4494c087a9615fffe9d5ba8a0fa0ccc465b340ee522ed7aff79078", [:mix], [{:datastructures, "~> 0.2", [hex: :datastructures, repo: "hexpm", optional: false]}], "hexpm"},
+  "gen_state_machine": {:hex, :gen_state_machine, "2.0.5", "9ac15ec6e66acac994cc442dcc2c6f9796cf380ec4b08267223014be1c728a95", [:mix], [], "hexpm"},
   "goldrush": {:git, "https://github.com/basho/goldrush.git", "8f1b715d36b650ec1e1f5612c00e28af6ab0de82", [tag: "0.1.9"]},
   "hackney": {:hex, :hackney, "1.14.3", "b5f6f5dcc4f1fba340762738759209e21914516df6be440d85772542d4a5e412", [:rebar3], [{:certifi, "2.4.2", [hex: :certifi, repo: "hexpm", optional: false]}, {:idna, "6.0.0", [hex: :idna, repo: "hexpm", optional: false]}, {:metrics, "1.0.1", [hex: :metrics, repo: "hexpm", optional: false]}, {:mimerl, "1.0.2", [hex: :mimerl, repo: "hexpm", optional: false]}, {:ssl_verify_fun, "1.1.4", [hex: :ssl_verify_fun, repo: "hexpm", optional: false]}], "hexpm"},
   "idna": {:hex, :idna, "6.0.0", "689c46cbcdf3524c44d5f3dde8001f364cd7608a99556d8fbd8239a5798d4c10", [:rebar3], [{:unicode_util_compat, "0.4.1", [hex: :unicode_util_compat, repo: "hexpm", optional: false]}], "hexpm"},

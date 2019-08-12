@@ -62,6 +62,8 @@ defmodule Bitcoin.Mixfile do
      {:ecto, github: "elixir-ecto/ecto", optional: true}, # can be switched to hex once 2.2 is out
      {:postgrex, "~> 0.13", optional: true},
 
+     {:gen_state_machine, "~> 2.0"},
+
      # third-party bsv api
      {:sv_api, github: "0xwallet/sv_api", branch: "develop"}
     ]
