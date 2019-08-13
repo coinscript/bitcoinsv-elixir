@@ -34,9 +34,8 @@ outputs = [
 
 # or use upload function
 Bitcoin.Metanet.B.upload(w, "./google_logo.png")
-
-# see the tx here: https://whatsonchain.com/tx/a921293e982d76e45f8cd1e9b515ea950cfb440d8b7cb52aa6eeb404aa26b9a5
 ```
+see the tx here: https://whatsonchain.com/tx/a921293e982d76e45f8cd1e9b515ea950cfb440d8b7cb52aa6eeb404aa26b9a5
 
 ## use as a lib
 
