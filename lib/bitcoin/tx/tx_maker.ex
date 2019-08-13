@@ -8,14 +8,17 @@ defmodule Bitcoin.Tx.TxMaker do
   defmodule Resource do
     def utxos(addr) do
       {:ok, data} = SvApi.Bitindex.utxos(addr)
-      utxos = for d <- data do
-        %{
-          txid: d["txid"],
-          txindex: d["vout"],
-          amount: d["value"],
-          script: d["scriptPubKey"]
-        }
-      end
+
+      utxos =
+        for d <- data do
+          %{
+            txid: d["txid"],
+            txindex: d["vout"],
+            amount: d["value"],
+            script: d["scriptPubKey"]
+          }
+        end
+
       utxos
     end
 
@@ -38,10 +41,12 @@ defmodule Bitcoin.Tx.TxMaker do
   def len(x) when is_list(x), do: length(x)
 
   def to_bytes(x, size, endian \\ :big) when is_integer(x) do
-    s = 8*size
+    s = 8 * size
+
     case endian do
       :big ->
         <<x::size(s)-big>>
+
       :little ->
         <<x::size(s)-little>>
     end
@@ -49,9 +54,16 @@ defmodule Bitcoin.Tx.TxMaker do
 
   def scriptcode(private_key) do
     pkhash = Key.privkey_to_pubkey_hash(private_key)
+
     [
-      0x76, 0xa9, 0x14, pkhash, 0x88, 0xac
-    ] |> join()
+      0x76,
+      0xA9,
+      0x14,
+      pkhash,
+      0x88,
+      0xAC
+    ]
+    |> join()
   end
 
   def int_to_varint(x) do
@@ -81,33 +93,62 @@ defmodule Bitcoin.Tx.TxMaker do
         txin.script,
         sequence()
       ])
-    end |> join()
+    end
+    |> join()
   end
 
   def construct_output_block(outputs) do
     Enum.map(outputs, fn output ->
-      script = case output do
-        {dest, amount} ->
-          [
-            0x76, 0xa9, 0x14, address_to_public_key_hash(dest), 0x88, 0xac
-          ] |> join()
-        ## what is "safe" type: https://blog.moneybutton.com/2019/08/02/money-button-now-supports-safe-on-chain-data/
-        %{type: "safe", data: data} ->
-          data = if is_list(data), do: data, else: [data]
-          [
-            0, 106, (for x <- data, do: [byte_size(x), x])
-          ] |> join()
-      end
-      amount = case output do
-        {_dest, amount} -> amount
-        %{type: "safe"} -> 0
-      end
+      script =
+        case output do
+          {dest, amount} ->
+            [
+              0x76,
+              0xA9,
+              0x14,
+              address_to_public_key_hash(dest),
+              0x88,
+              0xAC
+            ]
+            |> join()
+
+          ## what is "safe" type: https://blog.moneybutton.com/2019/08/02/money-button-now-supports-safe-on-chain-data/
+          %{type: "safe", data: data} ->
+            data = if is_list(data), do: data, else: [data]
+
+            [
+              0,
+              106,
+              for(x <- data, do: [byte_size(x) |> op_push(), x]) |> IO.inspect()
+            ]
+            |> join()
+        end
+
+      amount =
+        case output do
+          {_dest, amount} -> amount
+          %{type: "safe"} -> 0
+        end
+
       [
         amount |> to_bytes(8, :little),
         int_to_varint(len(script)),
         script
       ]
-    end) |> join()
+    end)
+    |> join()
+  end
+
+  def op_push(size) when size <= 75, do: size
+
+  def op_push(size) do
+    bytes = :binary.encode_unsigned size, :little
+    op = case byte_size(bytes) do
+      1 -> 0x4c
+      2 -> 0x4d
+      _ -> 0x4e
+    end
+    [op, bytes]
   end
 
   def newTxIn(script, script_len, txid, txindex, amount) do
@@ -120,7 +161,7 @@ defmodule Bitcoin.Tx.TxMaker do
     }
   end
 
-  def sequence(), do: 0xffffffff |> to_bytes(4, :little)
+  def sequence(), do: 0xFFFFFFFF |> to_bytes(4, :little)
 
   def create_p2pkh_transaction(private_key, unspents, outputs) do
     public_key = Key.privkey_to_pubkey(private_key)
@@ -156,75 +197,76 @@ defmodule Bitcoin.Tx.TxMaker do
 
     inputs =
       for txin <- inputs do
-        to_be_hashed = join([
-          version,
-          hashPrevouts,
-          hashSequence,
-          txin.txid,
-          txin.txindex,
-          scriptCode_len,
-          scriptCode,
-          txin.amount,
-          sequence,
-          hashOutputs,
-          lock_time,
-          hash_type
-        ])
+        to_be_hashed =
+          join([
+            version,
+            hashPrevouts,
+            hashSequence,
+            txin.txid,
+            txin.txindex,
+            scriptCode_len,
+            scriptCode,
+            txin.amount,
+            sequence,
+            hashOutputs,
+            lock_time,
+            hash_type
+          ])
 
         hashed = sha256(to_be_hashed)
 
         signature = Crypto.sign(private_key, hashed) <> <<0x41>>
 
-        script_sig = join([
-          len(signature) |> to_bytes(1, :little),
-          signature,
-          public_key_len,
-          public_key
-        ])
+        script_sig =
+          join([
+            len(signature) |> to_bytes(1, :little),
+            signature,
+            public_key_len,
+            public_key
+          ])
 
         %{
-          txin |
-          script: script_sig,
-          script_len: int_to_varint(len(script_sig))
+          txin
+          | script: script_sig,
+            script_len: int_to_varint(len(script_sig))
         }
       end
 
-    bytes_to_hex(join([
-      version,
-      input_count,
-      construct_input_block(inputs),
-      output_count,
-      output_block,
-      lock_time
-    ]))
+    bytes_to_hex(
+      join([
+        version,
+        input_count,
+        construct_input_block(inputs),
+        output_count,
+        output_block,
+        lock_time
+      ])
+    )
   end
 
-
   def estimate_tx_fee(n_in, n_out, satoshis, compressed, op_return_size \\ 0) do
-
     # 费率未知, 返回 0
     if !satoshis do
       0
     else
-
       # 估算交易体积
-      estimated_size = (
-          # version
-          4 +
-          n_in * (if compressed, do: 148, else: 180) +
-          # input count 的长度
+      # version
+      # input count 的长度
+      # excluding op_return outputs, dealt with separately
+      # output count 的长度
+      # grand total size of op_return outputs(s) and related field(s)
+      # time lock
+      estimated_size =
+        4 +
+          n_in * if(compressed, do: 148, else: 180) +
           len(int_to_varint(n_in)) +
-          # excluding op_return outputs, dealt with separately
           n_out * 34 +
-          # output count 的长度
           len(int_to_varint(n_out)) +
-          # grand total size of op_return outputs(s) and related field(s)
           op_return_size +
-          # time lock
           4
-      )
 
-      estimated_fee = estimated_size * satoshis # 体积乘以费率得到估计的手续费
+      # 体积乘以费率得到估计的手续费
+      estimated_fee = estimated_size * satoshis
 
       Logger.debug("Estimated fee: #{estimated_fee} satoshis for #{estimated_size} bytes")
 
@@ -240,14 +282,12 @@ defmodule Bitcoin.Tx.TxMaker do
     priv = "1AEB4829D9E92290EF35A3812B363B0CA87DFDA2B628060648339E9452BC923A" |> Binary.from_hex()
     addr = "1EMHJsiXjZmffBUWevGS5mWdoacmpt8vdH"
     utxos = [Resource.utxos(addr) |> IO.inspect() |> Enum.max_by(fn x -> x.amount end)]
+
     outputs = [
       {addr, hd(utxos).amount - 230}
     ]
+
     create_p2pkh_transaction(priv, utxos, outputs)
     |> broadcast()
   end
-
-
-
-
 end

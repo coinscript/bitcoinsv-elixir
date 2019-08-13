@@ -1,5 +1,4 @@
 defmodule Bitcoin.Protocol.Messages.Headers do
-
   @moduledoc """
     The headers packet returns block headers in response to a getheaders packet.
 
@@ -18,11 +17,12 @@ defmodule Bitcoin.Protocol.Messages.Headers do
 
   import Bitcoin.Protocol
 
-  defstruct headers: [] # Bitcoin.Protocol.Types.BlockHeader[], https://en.bitcoin.it/wiki/Protocol_specification#Block_Headers
+  # Bitcoin.Protocol.Types.BlockHeader[], https://en.bitcoin.it/wiki/Protocol_specification#Block_Headers
+  defstruct headers: []
 
   @type t :: %__MODULE__{
-    headers: list(BlockHeader.t)
-  }
+          headers: list(BlockHeader.t())
+        }
 
   @spec parse(binary) :: t
   def parse(payload) do
@@ -37,5 +37,4 @@ defmodule Bitcoin.Protocol.Messages.Headers do
   def serialize(%__MODULE__{} = s) do
     s.headers |> serialize_items
   end
-
 end

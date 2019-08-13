@@ -1,5 +1,4 @@
 defmodule Bitcoin.Protocol.Messages.NotFound do
-
   @moduledoc """
     notfound is a response to a getdata, sent if any requested data items could not be relayed, for example, because
     the requested transaction was not in the memory pool or relay set.
@@ -14,18 +13,16 @@ defmodule Bitcoin.Protocol.Messages.NotFound do
   defstruct inventory_vectors: []
 
   @type t :: %__MODULE__{
-    inventory_vectors: list(InventoryVector.t)
-  }
+          inventory_vectors: list(InventoryVector.t())
+        }
 
   @spec parse(binary) :: t
   def parse(payload) do
-
     {inventory_vectors, _} = payload |> collect_items(InventoryVector)
 
     %__MODULE__{
       inventory_vectors: inventory_vectors
     }
-
   end
 
   @spec serialize(t) :: binary

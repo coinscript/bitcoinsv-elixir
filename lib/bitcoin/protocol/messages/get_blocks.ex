@@ -1,5 +1,4 @@
 defmodule Bitcoin.Protocol.Messages.GetBlocks do
-
   @moduledoc """
     Return an inv packet containing the list of blocks starting right after the last known hash in the block locator
     object, up to hash_stop or 500 blocks, whichever comes first.
@@ -25,41 +24,40 @@ defmodule Bitcoin.Protocol.Messages.GetBlocks do
 
   import Bitcoin.Protocol
 
-  defstruct version: 0, # the protocol version
-            block_locator_hashes: [], # block locator object; newest back to genesis block (dense to start, but then sparse)
-            hash_stop: <<0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0>> # hash of the last desired block; set to zero to get as many blocks as possible (up to 500)
+  # the protocol version
+  defstruct version: 0,
+            # block locator object; newest back to genesis block (dense to start, but then sparse)
+            block_locator_hashes: [],
+            # hash of the last desired block; set to zero to get as many blocks as possible (up to 500)
+            hash_stop:
+              <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0>>
 
   @type t :: %__MODULE__{
-    version: non_neg_integer,
-    block_locator_hashes: list(Bitcoin.Block.t_hash),
-    hash_stop: Bitcoin.Block.t_hash
-  }
+          version: non_neg_integer,
+          block_locator_hashes: list(Bitcoin.Block.t_hash()),
+          hash_stop: Bitcoin.Block.t_hash()
+        }
 
-  @spec parse(binary) :: t 
+  @spec parse(binary) :: t
   def parse(data) do
-
-    << version :: unsigned-little-integer-size(32), payload :: binary>> = data
+    <<version::unsigned-little-integer-size(32), payload::binary>> = data
 
     {block_locator_hashes, payload} = payload |> collect_items(:hash)
 
-    << hash_stop :: bytes-size(32) >> = payload
+    <<hash_stop::bytes-size(32)>> = payload
 
     %__MODULE__{
       version: version,
       block_locator_hashes: block_locator_hashes,
       hash_stop: hash_stop
     }
-
   end
 
   @spec serialize(t) :: binary
   def serialize(%__MODULE__{} = s) do
-    << s.version :: unsigned-little-integer-size(32) >>
-    <>
-    ( s.block_locator_hashes |> serialize_items )
-    <>
-    << s.hash_stop :: bytes-size(32) >>
+    <<s.version::unsigned-little-integer-size(32)>> <>
+      (s.block_locator_hashes |> serialize_items) <>
+      <<s.hash_stop::bytes-size(32)>>
   end
-
-
 end

@@ -1,5 +1,4 @@
 defmodule Bitcoin.Script.Macros do
-
   # `op` macro is just a shorthand for defining another case of the `run` function.
   #
   #     op :OP_DUP, [x | stack], do: [x, x | stack]
@@ -9,10 +8,11 @@ defmodule Bitcoin.Script.Macros do
   #     run([x | stack], [:OP_DUP | script], opts), do: [x, x | stack] |> run(script, opts)
 
   # make it possible to provide a guard
-  defmacro op(op, {:when, _, [stack_clause, when_clause]}, do: stack_expression) when is_atom(op) do
+  defmacro op(op, {:when, _, [stack_clause, when_clause]}, do: stack_expression)
+           when is_atom(op) do
     quote do
       def run(unquote(stack_clause), [unquote(op) | script], opts) when unquote(when_clause) do
-        (unquote(stack_expression)) |> run(script, opts)
+        unquote(stack_expression) |> run(script, opts)
       end
     end
   end
@@ -20,7 +20,7 @@ defmodule Bitcoin.Script.Macros do
   defmacro op(op, stack_clause, do: stack_expression) when is_atom(op) do
     quote do
       def run(unquote(stack_clause), [unquote(op) | script], opts) do
-        (unquote(stack_expression)) |> run(script, opts)
+        unquote(stack_expression) |> run(script, opts)
       end
     end
   end
@@ -29,7 +29,7 @@ defmodule Bitcoin.Script.Macros do
   defmacro op(op, stack_clause, opts, do: stack_expression) when is_atom(op) do
     quote do
       def run(unquote(stack_clause), [unquote(op) | script], unquote(opts)) do
-        (unquote(stack_expression)) |> run(script, unquote(opts))
+        unquote(stack_expression) |> run(script, unquote(opts))
       end
     end
   end
@@ -50,7 +50,7 @@ defmodule Bitcoin.Script.Macros do
     quote do
       def run([unquote(a) | stack], [unquote(op) | script], opts) do
         with unquote(a) when is_number(unquote(a)) <- num(unquote(a), opts),
-          do: [bin(unquote(stack_expression)) | stack] |> run(script, opts)
+             do: [bin(unquote(stack_expression)) | stack] |> run(script, opts)
       end
     end
   end
@@ -60,7 +60,7 @@ defmodule Bitcoin.Script.Macros do
       def run([unquote(a), unquote(b) | stack], [unquote(op) | script], opts) do
         with unquote(a) when is_number(unquote(a)) <- num(unquote(a), opts),
              unquote(b) when is_number(unquote(b)) <- num(unquote(b), opts),
-          do: [bin(unquote(stack_expression)) | stack] |> run(script, opts)
+             do: [bin(unquote(stack_expression)) | stack] |> run(script, opts)
       end
     end
   end
@@ -71,7 +71,7 @@ defmodule Bitcoin.Script.Macros do
         with unquote(a) when is_number(unquote(a)) <- num(unquote(a), opts),
              unquote(b) when is_number(unquote(b)) <- num(unquote(b), opts),
              unquote(c) when is_number(unquote(c)) <- num(unquote(c), opts),
-          do: [bin(unquote(stack_expression)) | stack] |> run(script, opts)
+             do: [bin(unquote(stack_expression)) | stack] |> run(script, opts)
       end
     end
   end
@@ -85,7 +85,6 @@ defmodule Bitcoin.Script.Macros do
   #     run([], [:OP_SHA1 | _script] = script, opts), do: run([""], script, opts)
   #     run([x | stack], [:OP_SHA1 | script], opts), do: x = bin(x); [:crypto.hash(:sha, x) | stack] |> run(script, opts)
 
-
   defmacro op_hash(op, a, do: stack_expression) when is_atom(op) do
     quote do
       def run([], [unquote(op) | _script] = script, opts) do
@@ -98,6 +97,7 @@ defmodule Bitcoin.Script.Macros do
       end
     end
   end
+
   # changes opcode in the script to list of provided opcodes
 
   defmacro op_alias(op, list) when is_atom(op) and is_list(list) do
@@ -119,9 +119,8 @@ defmodule Bitcoin.Script.Macros do
   defmacro op_push(op, value) when is_atom(op) do
     quote do
       def run(stack, [unquote(op) | script], opts) do
-        ([unquote(value) | stack]) |> run(script, opts)
+        [unquote(value) | stack] |> run(script, opts)
       end
     end
   end
-
 end

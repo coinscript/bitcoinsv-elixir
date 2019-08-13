@@ -9,7 +9,8 @@ defmodule Bitcoin.Node.Network.Addr do
   """
 
   @max_stored_addrs 1_000
-  @persist_frequency 1*60_000 # 1 minute
+  # 1 minute
+  @persist_frequency 1 * 60_000
 
   use GenServer
 
@@ -36,11 +37,11 @@ defmodule Bitcoin.Node.Network.Addr do
 
   # Try adding addr
   def handle_cast({:add, %NetworkAddress{} = addr}, addrs) do
-    Logger.debug("adding new network address #{addr.address |> :inet.ntoa}")
+    Logger.debug("adding new network address #{addr.address |> :inet.ntoa()}")
     existing = addrs[addr.address]
 
     # If we already have this address, update timestamp if it's older
-    if (!existing || existing && existing.time < addr.time) && valid?(addr) do
+    if (!existing || (existing && existing.time < addr.time)) && valid?(addr) do
       {:noreply, addrs |> Map.put(addr.address, addr)}
     else
       {:noreply, addrs}
@@ -54,36 +55,42 @@ defmodule Bitcoin.Node.Network.Addr do
 
   # Total number of stored addrs
   def handle_call(:count, _from, addrs) do
-    {:reply, addrs |> Map.size, addrs}
+    {:reply, addrs |> Map.size(), addrs}
   end
 
   # Get random addr
   def handle_call(:get, _from, addrs) when addrs == %{}, do: {:reply, nil, addrs}
+
   def handle_call(:get, _from, addrs) do
-    {:reply, addrs |> Map.values |> Enum.random, addrs}
+    {:reply, addrs |> Map.values() |> Enum.random(), addrs}
   end
 
   defp valid?(%NetworkAddress{} = na), do: na.time <= Bitcoin.Node.timestamp()
 
   # Remove addresses above the limit, oldest first
-  defp cleanup(addrs), do: addrs |> Enum.sort_by(fn {_k, v} -> v.time end) |> Enum.reverse |> Enum.take(@max_stored_addrs) |> Enum.into(%{})
+  defp cleanup(addrs),
+    do:
+      addrs
+      |> Enum.sort_by(fn {_k, v} -> v.time end)
+      |> Enum.reverse()
+      |> Enum.take(@max_stored_addrs)
+      |> Enum.into(%{})
 
   # Save addrs to disk
   # TODO upgrade state struct and only touch disk if there was some change since the last time
   defp persist(addrs) do
-    :ok = filename() |> File.write(addrs |> :erlang.term_to_binary)
+    :ok = filename() |> File.write(addrs |> :erlang.term_to_binary())
     addrs
   end
 
   # Load addrs stored on disk
   defp load_persisted do
-    case filename() |> File.exists? do
-      true -> File.read!(filename()) |> :erlang.binary_to_term
+    case filename() |> File.exists?() do
+      true -> File.read!(filename()) |> :erlang.binary_to_term()
       false -> %{}
     end
   end
 
   # Filename where addrs are persisted
-  defp filename, do: [Bitcoin.Node.config().data_directory, "known_addrs.dat"] |> Path.join
-
+  defp filename, do: [Bitcoin.Node.config().data_directory, "known_addrs.dat"] |> Path.join()
 end

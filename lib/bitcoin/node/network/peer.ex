@@ -19,13 +19,14 @@ defmodule Bitcoin.Node.Network.Peer do
   alias Bitcoin.Protocol.Messages
   alias Bitcoin.Protocol.Types.NetworkAddress
 
-  @ping_timeout 30_000 # 30 seconds
-  @ping_frequency 600_000 # 10 minutes
+  # 30 seconds
+  @ping_timeout 30_000
+  # 10 minutes
+  @ping_frequency 600_000
 
   # Initialize Peer asking it to make  connection to specific
   def start(socket), do: GenServer.start(__MODULE__, socket)
   def start(ip, port), do: GenServer.start(__MODULE__, %{ip: ip, port: port})
-
 
   #
   # Init
@@ -71,15 +72,18 @@ defmodule Bitcoin.Node.Network.Peer do
 
   # Initialize TCP connection
   def handle_info(:connect, %{ip: ip, port: port} = state) do
-    Logger.info "Connecting to #{ip |> :inet.ntoa}:#{port}"
+    Logger.info("Connecting to #{ip |> :inet.ntoa()}:#{port}")
+
     case :gen_tcp.connect(ip, port, [:binary, active: true]) do
       # Successful connection
       {:ok, socket} ->
         self() |> send(:handshake)
         {:noreply, state |> Map.put(:socket, socket)}
+
       # Timout while trying to connect
       {:error, :etimedout} ->
         state |> disconnect(:connection_timeout)
+
       # Connection error
       {:error, _} ->
         state |> disconnect(:connection_error)
@@ -90,19 +94,20 @@ defmodule Bitcoin.Node.Network.Peer do
   def handle_info(:handshake, state) do
     node_config = Node.config()
 
-    pkt = %Messages.Version{
-      address_of_receiving_node: %NetworkAddress{
-        address: state.ip |> ip_to_inet,
-        port: state.port,
+    pkt =
+      %Messages.Version{
+        address_of_receiving_node: %NetworkAddress{
+          address: state.ip |> ip_to_inet,
+          port: state.port
         },
-      address_of_sending_node: %NetworkAddress{
-        address: node_config.listen_ip |> ip_to_inet,
-        port: node_config.listen_port,
-        services: node_config.services,
-        },
-    }
+        address_of_sending_node: %NetworkAddress{
+          address: node_config.listen_ip |> ip_to_inet,
+          port: node_config.listen_port,
+          services: node_config.services
+        }
+      }
       |> Map.merge(Bitcoin.Node.version_fields())
-      |> Bitcoin.Protocol.Message.serialize
+      |> Bitcoin.Protocol.Message.serialize()
 
     :ok = state.socket |> :gen_tcp.send(pkt)
     {:noreply, state}
@@ -113,7 +118,8 @@ defmodule Bitcoin.Node.Network.Peer do
     nonce = Bitcoin.Util.nonce64()
     %Messages.Ping{nonce: nonce} |> send_message(state)
 
-    state = state
+    state =
+      state
       |> Map.put(:last_ping_nonce, nonce)
       |> Map.put(:last_ping_time, Bitcoin.Util.militime())
 
@@ -153,7 +159,8 @@ defmodule Bitcoin.Node.Network.Peer do
       :ok ->
         %Messages.Verack{} |> send_message(state)
         {:noreply, state |> Map.put(:version, version) |> handle_connected}
-      _  ->
+
+      _ ->
         state |> disconnect(:version_mismatch)
     end
   end
@@ -167,13 +174,16 @@ defmodule Bitcoin.Node.Network.Peer do
   def handle_info({:msg, %Messages.Pong{nonce: nonce}}, state) do
     state |> debug("=> PONG")
 
-    state = cond do
-      nonce == state[:last_ping_nonce] ->
-        state
+    state =
+      cond do
+        nonce == state[:last_ping_nonce] ->
+          state
           |> Map.put(:ping_latency, Bitcoin.Util.militime() - state[:last_ping_time])
           |> Map.put(:last_ping_nonce, 0)
-      true -> state
-    end
+
+        true ->
+          state
+      end
 
     {:noreply, state}
   end
@@ -187,22 +197,22 @@ defmodule Bitcoin.Node.Network.Peer do
     state |> debug("=> INV  #{inventory_vectors |> inspect}")
     inventory_vectors |> Enum.each(fn iv -> Node.Inventory.seen(iv) end)
 
-    #Logger.info "#{ip |> inspect} <= I WANT IT ALL "
-    #%Messages.GetData{
-      #inventory_vectors: inventory_vectors |> Enum.filter(fn iv -> iv.reference_type == :msg_tx end)
-    #}|> send_message(state)
+    # Logger.info "#{ip |> inspect} <= I WANT IT ALL "
+    # %Messages.GetData{
+    # inventory_vectors: inventory_vectors |> Enum.filter(fn iv -> iv.reference_type == :msg_tx end)
+    # }|> send_message(state)
     {:noreply, state}
   end
 
   def handle_info({:msg, %Messages.Block{} = block}, state) do
-    state |> debug("=> BLOCK #{block |> Bitcoin.Block.hash |> Bitcoin.Util.hash_to_hex}")
-    block |> Node.Inventory.add
+    state |> debug("=> BLOCK #{block |> Bitcoin.Block.hash() |> Bitcoin.Util.hash_to_hex()}")
+    block |> Node.Inventory.add()
     {:noreply, state}
   end
 
   def handle_info({:msg, %Messages.Tx{} = tx}, state) do
-    state |> debug("=> TX #{tx |> Bitcoin.Tx.hash |> Bitcoin.Util.hash_to_hex}")
-    #tx |> Node.Inventory.add
+    state |> debug("=> TX #{tx |> Bitcoin.Tx.hash() |> Bitcoin.Util.hash_to_hex()}")
+    # tx |> Node.Inventory.add
     {:noreply, state}
   end
 
@@ -219,57 +229,63 @@ defmodule Bitcoin.Node.Network.Peer do
   # When no message is found ini the buffer we will continue to append it indefinitely (running out of memory eventually)
   # E.g. fix Massage.parse_stream should separate case of incomplete message from message not found
   def handle_info({:tcp, _port, data}, state) do
-    #state |> debug(">> #{data |> Base.encode16}")
+    # state |> debug(">> #{data |> Base.encode16}")
     state = state |> Map.put(:buffer, process_buffer(state[:buffer] <> data))
     {:noreply, state}
   end
 
   def handle_info({:tcp_closed, _port}, state) do
     state
-      |> debug("connection closed")
-      |> disconnect(:tcp_closed)
+    |> debug("connection closed")
+    |> disconnect(:tcp_closed)
   end
 
+  # 24 is the header size
+  def process_buffer(buffer) when byte_size(buffer) < 24, do: buffer
 
-  def process_buffer(buffer) when byte_size(buffer) < 24, do: buffer # 24 is the header size
   def process_buffer(buffer) do
-    {msg, remaining} = buffer |> Bitcoin.Protocol.Message.parse_stream
+    {msg, remaining} = buffer |> Bitcoin.Protocol.Message.parse_stream()
+
     case msg do
-      nil -> remaining
-      _   ->
+      nil ->
+        remaining
+
+      _ ->
         self() |> send({:msg, msg.payload.message})
         remaining |> process_buffer
     end
   end
 
   def send_message(msg, state) do
-    data = msg |> Bitcoin.Protocol.Message.serialize
+    data = msg |> Bitcoin.Protocol.Message.serialize()
     state.socket |> :gen_tcp.send(data)
     :ok
   end
 
   # Convert provided ip address to the ip tuple
-  def ip_to_inet({_,_,_,_} = inet), do: inet # IPv4
-  def ip_to_inet({_,_,_,_,_,_,_,_} = inet), do: inet # IPv6
-  def ip_to_inet(ip), do: ({:ok, _inet} = ip |> :inet.parse_address) |> elem(1)
-
+  # IPv4
+  def ip_to_inet({_, _, _, _} = inet), do: inet
+  # IPv6
+  def ip_to_inet({_, _, _, _, _, _, _, _} = inet), do: inet
+  def ip_to_inet(ip), do: ({:ok, _inet} = ip |> :inet.parse_address()) |> elem(1)
 
   # Called after a successful handshake.
   defp handle_connected(state) do
     :ok = @modules[:connection_manager].register_peer()
     self() |> send(:periodic_ping)
+
     state
-      |> Map.put(:status, :connected)
-      |> debug("successfully connected")
+    |> Map.put(:status, :connected)
+    |> debug("successfully connected")
   end
 
   defp debug(%{ip: ip, port: port, direction: direction} = state, msg) do
-    Logger.debug "[#{direction}] #{ip |> :inet.ntoa}:#{port} #{msg}"
+    Logger.debug("[#{direction}] #{ip |> :inet.ntoa()}:#{port} #{msg}")
     state
   end
 
   defp disconnect(state, reason) do
-    Logger.debug "#{state.ip |> :inet.ntoa} disconnected :#{reason}"
+    Logger.debug("#{state.ip |> :inet.ntoa()} disconnected :#{reason}")
     {:stop, :normal, state |> Map.put(:status, :disconnected)}
   end
 
@@ -278,15 +294,17 @@ defmodule Bitcoin.Node.Network.Peer do
   defp validate_version(%Messages.Version{} = version) do
     [
       # Nonce in the VERSION packet is used to detect self connections
-      fn version -> if version.nonce != Bitcoin.Node.nonce(), do: :ok, else: {:error, :self_connection} end,
+      fn version ->
+        if version.nonce != Bitcoin.Node.nonce(), do: :ok, else: {:error, :self_connection}
+      end,
 
       # Check if the timestamp difference is below 1 hour
-      fn version -> if abs(Bitcoin.Node.timestamp() - version.timestamp) < 3600, do: :ok, else: {:error, :incorrect_timestamp} end
+      fn version ->
+        if abs(Bitcoin.Node.timestamp() - version.timestamp) < 3600,
+          do: :ok,
+          else: {:error, :incorrect_timestamp}
+      end
     ]
     |> Bitcoin.Util.run_validations(version)
   end
-
 end
-
-
-

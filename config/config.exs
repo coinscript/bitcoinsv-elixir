@@ -7,7 +7,6 @@ use Mix.Config
 config :bitcoin, ecto_repos: [Bitcoin.Node.Storage.Engine.Postgres.Repo]
 config :bitcoin, Bitcoin.Node.Storage.Engine.Postgres.Repo, adapter: Ecto.Adapters.Postgres
 
-
 # This configuration is loaded before any dependency and is restricted
 # to this project. If another project depends on this project, this
 # file won't be loaded nor affect the parent project. For this reason,
@@ -72,6 +71,4 @@ config :bitcoin, Bitcoin.Node.Storage.Engine.Postgres.Repo, adapter: Ecto.Adapte
 # config :bitcoin, :node,
 #   modules: [storage_engine: Bitcoin.Node.Storage.Engine.Postgres]
 
-
-import_config "#{Mix.env}.exs"
-
+import_config "#{Mix.env()}.exs"

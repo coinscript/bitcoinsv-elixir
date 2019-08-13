@@ -1,5 +1,4 @@
 defmodule Bitcoin.Node.Storage.Engine.PostgesTest do
-
   use ExUnit.Case
 
   alias Bitcoin.Node.Storage.Engine.Postgres
@@ -17,13 +16,13 @@ defmodule Bitcoin.Node.Storage.Engine.PostgesTest do
   test "store a block" do
     assert Postgres.max_height() == nil
 
-    block = File.read!("test/data/blk_100000.dat") |> Messages.Block.parse
+    block = File.read!("test/data/blk_100000.dat") |> Messages.Block.parse()
     block_hash = Bitcoin.Block.hash(block)
-    #{:ok, pid} = Postgres.start_link(%{})
-    :ok = Postgres.store_block(block, %{height: 100_000}) |> IO.inspect
+    # {:ok, pid} = Postgres.start_link(%{})
+    :ok = Postgres.store_block(block, %{height: 100_000}) |> IO.inspect()
     tx1 = block.transactions |> Enum.at(1)
 
-    assert Postgres.get_tx(tx1 |> Bitcoin.Tx.hash) == tx1
+    assert Postgres.get_tx(tx1 |> Bitcoin.Tx.hash()) == tx1
 
     assert Postgres.get_block(block_hash) == block
 

@@ -1,5 +1,4 @@
 defmodule Bitcoin.DERSig do
-
   @moduledoc """
   DER Signature.
 
@@ -37,7 +36,7 @@ defmodule Bitcoin.DERSig do
   @type t :: %__MODULE__{}
 
   # Upper bound for what's considered a low S value, inclusive (see BIP62)
-  @low_s_max Secp256k1.params[:n] / 2
+  @low_s_max Secp256k1.params()[:n] / 2
 
   @doc """
   Parse binary signature into %DERSig{} struct.
@@ -54,7 +53,8 @@ defmodule Bitcoin.DERSig do
   """
   @spec serialize(t) :: binary
   def serialize(%__MODULE__{} = der) do
-    <<der.type, der.length, der.r_type, byte_size(der.r), der.r :: binary, der.s_type, byte_size(der.s), der.s :: binary>>
+    <<der.type, der.length, der.r_type, byte_size(der.r), der.r::binary, der.s_type,
+      byte_size(der.s), der.s::binary>>
   end
 
   @doc """
@@ -79,6 +79,7 @@ defmodule Bitcoin.DERSig do
   def normalize(%__MODULE__{} = der) do
     r = der.r |> trim |> fix_negative
     s = der.s |> trim |> low_s |> fix_negative
+
     der
     |> Map.put(:r, r)
     |> Map.put(:s, s)
@@ -103,76 +104,78 @@ defmodule Bitcoin.DERSig do
   @spec strict?(binary) :: boolean
   def strict?(sig) when is_binary(sig) do
     der = parse_raw(sig)
+
     cond do
       # Minimum size constraint
-      byte_size(sig) < 8
-        -> false
+      byte_size(sig) < 8 ->
+        false
 
       # Maximum size constraint
-      byte_size(sig) > 72
-        -> false
+      byte_size(sig) > 72 ->
+        false
 
       # A signature is of type 0x30 (compound).
-      der.type != 0x30
-        -> false
+      der.type != 0x30 ->
+        false
 
       # Length covers the entire signature
-      der.length != byte_size(sig) - 2
-        -> false
+      der.length != byte_size(sig) - 2 ->
+        false
 
       # Make sure the length of the S element is still inside the signature
       # -> Our parser will currently raise if it's not
 
       # Length of the signature matches the sum of the length of the elements
-      der.length != der.r_length + der.s_length + 4
-        -> false
+      der.length != der.r_length + der.s_length + 4 ->
+        false
 
       # R element is an integer.
-      der.r_type != 0x02
-        -> false
+      der.r_type != 0x02 ->
+        false
 
       # R length > 0
-      der.r == <<>>
-        -> false
+      der.r == <<>> ->
+        false
 
       # R is positive
-      (Binary.at(sig, 4) &&& 0x80) == 0x80
-        -> false
+      (Binary.at(sig, 4) &&& 0x80) == 0x80 ->
+        false
 
       # No unecessary null bytes at the start of R
-      trim(der.r) != der.r
-        -> false
+      trim(der.r) != der.r ->
+        false
 
       # Check whether the S element is an integer.
-      der.s_type != 0x02
-        -> false
+      der.s_type != 0x02 ->
+        false
 
       # S length > 0
-      der.s == <<>>
-        -> false
+      der.s == <<>> ->
+        false
 
       # S is not negative
-      (Binary.at(der.s, 0) &&& 0x80) == 0x80
-        -> false
+      (Binary.at(der.s, 0) &&& 0x80) == 0x80 ->
+        false
 
       # No unecessary null bytes at the start of S
-      trim(der.s) != der.s
-        -> false
+      trim(der.s) != der.s ->
+        false
 
       # All passed
-      true -> true
+      true ->
+        true
     end
   end
 
   # Parses signature
   defp parse_raw(sig) do
-    <<type, total_length, sig :: binary>> = sig
+    <<type, total_length, sig::binary>> = sig
 
-    <<r_type, r_length, sig :: binary>> = sig
-    <<r :: binary-size(r_length), sig :: binary>> = sig
+    <<r_type, r_length, sig::binary>> = sig
+    <<r::binary-size(r_length), sig::binary>> = sig
 
-    <<s_type, s_length, sig :: binary>> = sig
-    <<s :: binary-size(s_length), _bin :: binary>> = sig
+    <<s_type, s_length, sig::binary>> = sig
+    <<s::binary-size(s_length), _bin::binary>> = sig
 
     %{
       length: total_length,
@@ -189,19 +192,18 @@ defmodule Bitcoin.DERSig do
   # Trim leading null bytes
   # But we need to be careful because if the null byte is followed by a byte with 0x80 bit set,
   # removing the null byte would change the number sign.
-  defp trim(<<0, b, _bin :: binary>> = sig) when (b &&& 0x80) == 0x80, do: sig
-  defp trim(<<0, bin :: binary>>), do: trim(bin)
+  defp trim(<<0, b, _bin::binary>> = sig) when (b &&& 0x80) == 0x80, do: sig
+  defp trim(<<0, bin::binary>>), do: trim(bin)
   defp trim(bin), do: bin
 
   # Ensure that the low S value is used
-  defp low_s(s), do: s |> Binary.to_integer |> low_s_num |> Binary.from_integer
-  defp low_s_num(s) when s > @low_s_max, do: Secp256k1.params[:n] - s
+  defp low_s(s), do: s |> Binary.to_integer() |> low_s_num |> Binary.from_integer()
+  defp low_s_num(s) when s > @low_s_max, do: Secp256k1.params()[:n] - s
   defp low_s_num(s), do: s
 
   # S should not be negative. But you can find it negative e.g in tx 70f7c15c6f62139cc41afa858894650344eda9975b46656d893ee59df8914a3d
   # You can also find negative R in tx 251d9cc59d1fc23b0ec6e62aff6106f1890bf9ed4eb0b7df70319d3e555f4fd2
   # These are encoding errors, null byte must be appendend at the beginning so that these numbers are interpreted as positive
-  defp fix_negative(<<b, _ :: binary>> = bin) when (b &&& 0x80) == 0x80, do: <<0, bin :: binary>>
+  defp fix_negative(<<b, _::binary>> = bin) when (b &&& 0x80) == 0x80, do: <<0, bin::binary>>
   defp fix_negative(bin), do: bin
-
 end

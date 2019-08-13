@@ -1,5 +1,4 @@
 defmodule Bitcoin.Node.Network.Supervisor do
-
   use Bitcoin.Common
   use Supervisor
 
@@ -10,7 +9,7 @@ defmodule Bitcoin.Node.Network.Supervisor do
   end
 
   def init(_) do
-    Logger.info "Starting Node subsystems"
+    Logger.info("Starting Node subsystems")
 
     [
       @modules[:addr],
@@ -23,5 +22,4 @@ defmodule Bitcoin.Node.Network.Supervisor do
     |> Enum.map(fn m -> worker(m, []) end)
     |> supervise(strategy: :one_for_one)
   end
-
 end

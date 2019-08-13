@@ -1,5 +1,4 @@
 defmodule Bitcoin.Protocol.Messages.GetData do
-
   @moduledoc """
     getdata is used in response to inv, to retrieve the content of a specific object, and is usually sent after
     receiving an inv packet, after filtering known elements. It can be used to retrieve transactions, but only
@@ -16,8 +15,8 @@ defmodule Bitcoin.Protocol.Messages.GetData do
   defstruct inventory_vectors: []
 
   @type t :: %__MODULE__{
-    inventory_vectors: [InventoryVector.t]
-  }
+          inventory_vectors: [InventoryVector.t()]
+        }
 
   @spec parse(binary) :: t
   def parse(payload) do

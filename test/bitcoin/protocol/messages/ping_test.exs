@@ -3,9 +3,10 @@ defmodule Bitcoin.Protocol.Messages.PingTest do
   alias Bitcoin.Protocol.Messages.Ping
 
   test "parses the ping message" do
-    nonce = 123456790987654321
+    nonce = 123_456_790_987_654_321
 
-    payload = <<177, 196, 237, 27, 76, 155, 182, 1>> # 64 bit int nonce
+    # 64 bit int nonce
+    payload = <<177, 196, 237, 27, 76, 155, 182, 1>>
 
     struct = %Ping{nonce: nonce}
 

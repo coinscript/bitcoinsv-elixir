@@ -16,7 +16,7 @@ defmodule Bitcoin.Node.Storage.Engine.Dummy do
   @persistence_dir "tmp/blocks/#{@network}"
 
   # I don't like it here, I don't know how to avoid it without impacting performance
-  if Mix.env == :test, do: @persistence false
+  if Mix.env() == :test, do: @persistence(false)
 
   # TODO behavior
   # TODO storage model:
@@ -30,32 +30,40 @@ defmodule Bitcoin.Node.Storage.Engine.Dummy do
 
   def call(arg), do: GenServer.call(__MODULE__, arg, @default_timeout)
 
-  def store_block(%Messages.Block{} = block, %{height: _height} = opts), do: call {:store_block, block, opts}
-  def store_tx(%Messages.Tx{} = block), do: call {:store_tx, block}
-  def get_block(hash), do: call {:get_block, hash}
+  def store_block(%Messages.Block{} = block, %{height: _height} = opts),
+    do: call({:store_block, block, opts})
+
+  def store_tx(%Messages.Tx{} = block), do: call({:store_tx, block})
+  def get_block(hash), do: call({:get_block, hash})
   def get_block_height(@genesis_hash), do: 0
+
   def get_block_height(hash) do
     block = get_block(hash)
     block && block.height
   end
-  def get_tx(hash), do: call {:get_tx, hash}
-  def max_height(), do: call :max_height
-  def get_blocks_with_height(height), do: call {:get_blocks_with_height, height}
+
+  def get_tx(hash), do: call({:get_tx, hash})
+  def max_height(), do: call(:max_height)
+  def get_blocks_with_height(height), do: call({:get_blocks_with_height, height})
 
   def init(opts) do
     state = %{
       opts: opts,
       block: %{},
       max_height: nil,
-      block_by_height: %{}, # we even have an index!
+      # we even have an index!
+      block_by_height: %{},
       tx: %{}
     }
-    state = if persistence?() do
-      File.mkdir_p(@persistence_dir)
-      state |> load_stored
-    else
-      state
-    end
+
+    state =
+      if persistence?() do
+        File.mkdir_p(@persistence_dir)
+        state |> load_stored
+      else
+        state
+      end
+
     {:ok, state}
   end
 
@@ -63,6 +71,7 @@ defmodule Bitcoin.Node.Storage.Engine.Dummy do
     blocks =
       state.block_by_height[height]
       |> Enum.map(fn hash -> state.block[hash] |> Map.put(:hash, hash) end)
+
     {:reply, blocks, state}
   end
 
@@ -89,35 +98,41 @@ defmodule Bitcoin.Node.Storage.Engine.Dummy do
   defp persistence?, do: @persistence
 
   defp store_block(state, %Messages.Block{} = block, %{height: height} = opts) do
-    hash = block |> Bitcoin.Block.hash
-    if !opts[:loading] && persistence?(), do: File.write(height |> block_path, block |> Messages.Block.serialize)
+    hash = block |> Bitcoin.Block.hash()
+
+    if !opts[:loading] && persistence?(),
+      do: File.write(height |> block_path, block |> Messages.Block.serialize())
+
     block.transactions
-    |> Enum.reduce(state, fn(tx, state) -> state |> store_tx(tx)  end)
-    |> put_in([:block, hash], block |> Map.put(:height, height)) # TODO block sholud only store tx hashes
-    |> put_in([:block_by_height, height], [hash | (state.block_by_height[height] || [])])
+    |> Enum.reduce(state, fn tx, state -> state |> store_tx(tx) end)
+    # TODO block sholud only store tx hashes
+    |> put_in([:block, hash], block |> Map.put(:height, height))
+    |> put_in([:block_by_height, height], [hash | state.block_by_height[height] || []])
     |> Map.put(:max_height, max(height, state.max_height) || height)
   end
 
   defp load_stored(state), do: load_stored(state, 0)
 
   defp load_stored(state, height) do
-    case height |> block_path |> File.read do
+    case height |> block_path |> File.read() do
       {:ok, block_data} ->
         block = Messages.Block.parse(block_data)
+
         state
         |> store_block(block, %{loading: true, height: height})
         |> load_stored(height + 1)
-      {:error, _} -> state
+
+      {:error, _} ->
+        state
     end
   end
 
   defp store_tx(state, tx) do
-    hash = tx |> Bitcoin.Tx.hash
+    hash = tx |> Bitcoin.Tx.hash()
     state |> put_in([:tx, hash], tx)
   end
 
   def block_path(height) do
     Path.join(@persistence_dir, "block_#{height}.dat")
   end
-
 end

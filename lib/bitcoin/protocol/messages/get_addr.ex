@@ -1,5 +1,4 @@
 defmodule Bitcoin.Protocol.Messages.GetAddr do
-
   @moduledoc """
     The getaddr message sends a request to a node asking for information about known active peers to help with finding
     potential nodes in the network. The response to receiving this message is to transmit one or more addr messages with
@@ -16,5 +15,4 @@ defmodule Bitcoin.Protocol.Messages.GetAddr do
   end
 
   def serialize(_), do: <<>>
-
 end

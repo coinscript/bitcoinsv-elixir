@@ -1,5 +1,4 @@
 defmodule Bitcoin.Script do
-
   @moduledoc """
   Bitcoin Script.
 
@@ -82,15 +81,19 @@ defmodule Bitcoin.Script do
 
   # default opts are done this weird way because additional function cases come from uses above (to avoid warnings)
   def verify_sig_pk(sig_bin, pk_bin), do: verify_sig_pk(sig_bin, pk_bin, %{})
-  def verify_sig_pk(sig_bin, pk_bin, opts) when is_binary(sig_bin) and is_binary(pk_bin), do: verify_sig_pk(sig_bin |> parse, pk_bin |> parse, opts)
+
+  def verify_sig_pk(sig_bin, pk_bin, opts) when is_binary(sig_bin) and is_binary(pk_bin),
+    do: verify_sig_pk(sig_bin |> parse, pk_bin |> parse, opts)
+
   def verify_sig_pk(sig_script, pk_script, opts) do
     try do
       sig_script
       |> exec(opts)
       |> exec(pk_script, opts)
       |> cast_to_bool
-    catch _,_ ->
-      false
+    catch
+      _, _ ->
+        false
     end
   end
 
@@ -99,8 +102,9 @@ defmodule Bitcoin.Script do
     # TODO we should get rid of exceptions, make parser return {:error and non matched script cases should just be :invalid
     try do
       script |> exec(opts) |> cast_to_bool
-    catch _, _ ->
-      false
+    catch
+      _, _ ->
+        false
     end
   end
 
@@ -108,6 +112,4 @@ defmodule Bitcoin.Script do
   def cast_to_bool({:error, _}), do: false
   def cast_to_bool([]), do: false
   def cast_to_bool([x | _]), do: Interpreter.bool(x)
-
-
 end

@@ -1,8 +1,6 @@
 defmodule Bitcoin.Const do
- 
   defmacro __using__(_opts) do
     quote do
-
       # Configurable network name e.g. bitcoin, testnet
       @network Application.get_env(:bitcoin, :network) || :bitcoin
 
@@ -15,7 +13,7 @@ defmodule Bitcoin.Const do
       @subsidy_halving_interval 210_000
 
       # Block reward before the first halving
-      @base_subsidy_value 50*@coin
+      @base_subsidy_value 50 * @coin
 
       # Maximum block size
       @max_block_size 1_000_000
@@ -25,8 +23,6 @@ defmodule Bitcoin.Const do
         :bitcoin -> use Bitcoin.ChainParams.Bitcoin
         :testnet -> use Bitcoin.ChainParams.Testnet
       end
-
     end
   end
-
 end

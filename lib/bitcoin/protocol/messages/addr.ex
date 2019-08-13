@@ -1,5 +1,4 @@
 defmodule Bitcoin.Protocol.Messages.Addr do
-
   @moduledoc """
     Provide information on known nodes of the network. Non-advertised nodes should be forgotten after typically 3 hours.
 
@@ -13,12 +12,11 @@ defmodule Bitcoin.Protocol.Messages.Addr do
   defstruct address_list: []
 
   @type t :: %__MODULE__{
-    address_list: [NetworkAddress.t]
-  }
+          address_list: [NetworkAddress.t()]
+        }
 
   @spec parse(binary) :: t
   def parse(payload) do
-
     {address_list, _payload} = payload |> collect_items(NetworkAddress)
 
     %__MODULE__{
@@ -30,5 +28,4 @@ defmodule Bitcoin.Protocol.Messages.Addr do
   def serialize(%__MODULE__{} = s) do
     s.address_list |> serialize_items
   end
-
 end

@@ -8,30 +8,30 @@ defmodule Bitcoin.ScriptTest do
 
   import Test.Helper
 
-
   # From script test cases json file:
-  #["It is evaluated as if there was a crediting coinbase transaction with two 0"],
-  #["pushes as scriptSig, and one output of 0 satoshi and given scriptPubKey,"],
-  #["followed by a spending transaction which spends this output as only input (and"],
-  #["correct prevout hash), using the given scriptSig. All nLockTimes are 0, all"],
-  #["nSequences are max."],
+  # ["It is evaluated as if there was a crediting coinbase transaction with two 0"],
+  # ["pushes as scriptSig, and one output of 0 satoshi and given scriptPubKey,"],
+  # ["followed by a spending transaction which spends this output as only input (and"],
+  # ["correct prevout hash), using the given scriptSig. All nLockTimes are 0, all"],
+  # ["nSequences are max."],
   def test_script_verify(sig_bin, pk_bin, opts \\ %{}) do
-
     cred_tx = %Messages.Tx{
       inputs: [
         %Types.TxInput{
           previous_output: %Types.Outpoint{
-            hash: <<0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0>>,
-            index: 0xFF_FF_FF_FF,
+            hash:
+              <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0>>,
+            index: 0xFF_FF_FF_FF
           },
           signature_script: <<0, 0>>,
-          sequence: 0xFF_FF_FF_FF,
+          sequence: 0xFF_FF_FF_FF
         }
       ],
       outputs: [
         %Types.TxOutput{
           value: 0,
-          pk_script: pk_bin,
+          pk_script: pk_bin
         }
       ],
       lock_time: 0,
@@ -42,11 +42,11 @@ defmodule Bitcoin.ScriptTest do
       inputs: [
         %Types.TxInput{
           previous_output: %Types.Outpoint{
-            hash: cred_tx |> Bitcoin.Tx.hash,
+            hash: cred_tx |> Bitcoin.Tx.hash(),
             index: 0
           },
           signature_script: sig_bin,
-          sequence: 0xFF_FF_FF_FF,
+          sequence: 0xFF_FF_FF_FF
         }
       ],
       outputs: [
@@ -62,77 +62,99 @@ defmodule Bitcoin.ScriptTest do
     Script.verify_sig_pk(sig_bin, pk_bin, %{tx: spend_tx, input_number: 0} |> Map.merge(opts))
   end
 
-
   test "run super simple" do
-    assert true == [2, 3, :OP_ADD, 5, :OP_EQUAL] |> Script.verify
-    assert false ==[2, 3, :OP_ADD, 4, :OP_EQUAL] |> Script.verify
+    assert true == [2, 3, :OP_ADD, 5, :OP_EQUAL] |> Script.verify()
+    assert false == [2, 3, :OP_ADD, 4, :OP_EQUAL] |> Script.verify()
   end
 
   test "disabled op prpsent" do
-    assert false == [2, :OP_2MUL] |> Script.verify
+    assert false == [2, :OP_2MUL] |> Script.verify()
   end
 
   test "disabled op in unexecuted if branch" do
-    assert false == ([:OP_TRUE, :OP_IF, :OP_TRUE, :OP_ELSE, :OP_2, :OP_2MUL, :OP_ENDIF] |> Script.to_binary |> Script.verify)
+    assert false ==
+             [:OP_TRUE, :OP_IF, :OP_TRUE, :OP_ELSE, :OP_2, :OP_2MUL, :OP_ENDIF]
+             |> Script.to_binary()
+             |> Script.verify()
   end
 
   test "bitcoin core scripts.json" do
-    cases = 
-      File.read!("test/data/script_tests.json") |> Poison.decode! 
+    cases =
+      File.read!("test/data/script_tests.json")
+      |> Poison.decode!()
       # remove comments
       |> Enum.filter(fn x -> length(x) != 1 end)
       # we'll focus on segwit once we got the basics
-      |> Enum.filter(fn [_,_,flags | _] -> !String.contains?(flags, "WITNESS") end)
+      |> Enum.filter(fn [_, _, flags | _] -> !String.contains?(flags, "WITNESS") end)
 
     rets =
       cases
-      |> Enum.map(fn [sig_script, pk_script, flags, result | _comment ] ->
+      |> Enum.map(fn [sig_script, pk_script, flags, result | _comment] ->
         flags = flags |> flags_string_to_map
         bool_result = result == "OK"
-        run_result = try do # try is a lazy way to handle {:errors from parsing
-          sig_bin = sig_script |> Script.Serialization.string2_to_binary
-          pk_bin = pk_script |> Script.Serialization.string2_to_binary
-          test_script_verify(sig_bin, pk_bin, %{flags: flags})
-        catch _,_ ->
-          false
-        end
+        # try is a lazy way to handle {:errors from parsing
+        run_result =
+          try do
+            sig_bin = sig_script |> Script.Serialization.string2_to_binary()
+            pk_bin = pk_script |> Script.Serialization.string2_to_binary()
+            test_script_verify(sig_bin, pk_bin, %{flags: flags})
+          catch
+            _, _ ->
+              false
+          end
+
         run_result == bool_result
       end)
-    ok_count = rets |> Enum.filter(fn x -> x == true end) |> Enum.count
+
+    ok_count = rets |> Enum.filter(fn x -> x == true end) |> Enum.count()
     count = cases |> length
-    IO.puts "\nBitcoin core script tests: #{ok_count}/#{count}"
+    IO.puts("\nBitcoin core script tests: #{ok_count}/#{count}")
   end
 
   test "bitcore-lib test suite" do
     # source https://raw.githubusercontent.com/bitpay/bitcore-lib/master/test/data/bitcoind/script_valid.json
     # (I think they originally come from BitcoinJ, good stuff
-    valid =   File.read!("test/data/script_hex_valid.json")   |> Poison.decode! |> Enum.map(fn x -> [true | x] end)
-    invalid = File.read!("test/data/script_hex_invalid.json") |> Poison.decode! |> Enum.map(fn x -> [false | x] end)
+    valid =
+      File.read!("test/data/script_hex_valid.json")
+      |> Poison.decode!()
+      |> Enum.map(fn x -> [true | x] end)
 
-    scripts = (valid ++ invalid)
-      |> Enum.filter(fn [_,_,_,flags,_] -> !String.contains?(flags, "DISCOURAGE_UPGRADABLE_NOPS") end)
-      #|> Enum.filter(fn [_,_,_,flags,_] -> !String.contains?(flags, "MINIMALDATA") end)
+    invalid =
+      File.read!("test/data/script_hex_invalid.json")
+      |> Poison.decode!()
+      |> Enum.map(fn x -> [false | x] end)
 
-    rets = scripts  |> Enum.map(fn [result, sig_hex, pk_hex, flags_str, comment] ->
-      flags = flags_str |> flags_string_to_map
+    scripts =
+      (valid ++ invalid)
+      |> Enum.filter(fn [_, _, _, flags, _] ->
+        !String.contains?(flags, "DISCOURAGE_UPGRADABLE_NOPS")
+      end)
 
-      pk_bin = pk_hex |> String.upcase |> Base.decode16!
-      sig_bin = sig_hex |> String.upcase |> Base.decode16!
-      ret = test_script_verify(sig_bin, pk_bin, %{flags: flags}) == result
-      if !ret do
-        #Uncomment to get list of scripts that failed
-        #IO.puts "\n\nshould be #{result} #[#{flags_str |> inspect}] => #{flags |> inspect} | #{comment} :"
-        #sig_bin |> IO.inspect |> Script.parse |> IO.inspect(limit: :infinity) #|> Script.run |> IO.inspect
-        #pk_bin |> IO.inspect |> Script.parse |> IO.inspect(limit: :infinity) #|> Script.run |> IO.inspect
-        #assert false
-      end
-      ret
-    end)
+    # |> Enum.filter(fn [_,_,_,flags,_] -> !String.contains?(flags, "MINIMALDATA") end)
 
-    ok_count = rets |> Enum.filter(fn x -> x == true end) |> Enum.count
+    rets =
+      scripts
+      |> Enum.map(fn [result, sig_hex, pk_hex, flags_str, comment] ->
+        flags = flags_str |> flags_string_to_map
+
+        pk_bin = pk_hex |> String.upcase() |> Base.decode16!()
+        sig_bin = sig_hex |> String.upcase() |> Base.decode16!()
+        ret = test_script_verify(sig_bin, pk_bin, %{flags: flags}) == result
+
+        if !ret do
+          # Uncomment to get list of scripts that failed
+          # IO.puts "\n\nshould be #{result} #[#{flags_str |> inspect}] => #{flags |> inspect} | #{comment} :"
+          # sig_bin |> IO.inspect |> Script.parse |> IO.inspect(limit: :infinity) #|> Script.run |> IO.inspect
+          # pk_bin |> IO.inspect |> Script.parse |> IO.inspect(limit: :infinity) #|> Script.run |> IO.inspect
+          # assert false
+        end
+
+        ret
+      end)
+
+    ok_count = rets |> Enum.filter(fn x -> x == true end) |> Enum.count()
     count = scripts |> length
-    IO.puts "\nBitcore-lib script tests: #{ok_count}/#{count}"# (#{fail_count} FAIL, #{count - ok_count - fail_count} BAD)"
-
+    # (#{fail_count} FAIL, #{count - ok_count - fail_count} BAD)"
+    IO.puts("\nBitcore-lib script tests: #{ok_count}/#{count}")
   end
-
 end

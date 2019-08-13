@@ -1,5 +1,4 @@
 defmodule Bitcoin.Node.Network.Discovery do
-
   use Bitcoin.Common
   use GenServer
 
@@ -32,11 +31,10 @@ defmodule Bitcoin.Node.Network.Discovery do
           }
         end)
         |> Enum.each(fn addr -> @modules[:addr].add(addr) end)
-
       end)
+
       :ok
     end
-
   end
 
   def start_link, do: GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
@@ -45,10 +43,10 @@ defmodule Bitcoin.Node.Network.Discovery do
   def begin_discovery, do: GenServer.cast(__MODULE__, :begin_discovery)
 
   def handle_cast(:begin_discovery, %{discovery_started: true} = opts), do: {:noreply, opts}
+
   def handle_cast(:begin_discovery, opts) do
-    Logger.info "Beginning Peer Discovery Process"
+    Logger.info("Beginning Peer Discovery Process")
     Strategy.DNS.gather_peers(opts)
     {:noreply, opts |> Map.put(:discovery_started, true)}
   end
-
 end

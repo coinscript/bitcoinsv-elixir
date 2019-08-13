@@ -10,7 +10,7 @@ use Mix.Config
 # config :bitcoin, :util, save_as_test_case: true
 
 config :logger,
-  level: :info,
+  level: :debug,
   truncate: :infinity
 
 # Example configuration for running the node with postgres backend
@@ -27,4 +27,3 @@ config :logger,
 #   username: "bitcoin_elixir",
 #   password: "bitcoin_elixir",
 #   hostname: "localhost"
-

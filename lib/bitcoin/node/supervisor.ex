@@ -8,7 +8,7 @@ defmodule Bitcoin.Node.Supervisor do
   end
 
   def init(:ok) do
-    Logger.info "Starting Node subsystems"
+    Logger.info("Starting Node subsystems")
 
     children = [
       worker(Bitcoin.Node, []),
@@ -17,5 +17,4 @@ defmodule Bitcoin.Node.Supervisor do
 
     children |> supervise(strategy: :one_for_one)
   end
-
 end

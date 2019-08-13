@@ -1,5 +1,4 @@
 defmodule Bitcoin.Node.Storage do
-
   @moduledoc """
   Handles blocks and transactions persistance.
 
@@ -20,13 +19,12 @@ defmodule Bitcoin.Node.Storage do
 
   @engine @modules[:storage_engine]
 
-
-  defdelegate prepare(opts),          to: @engine
-  defdelegate has_block?(hash),       to: @engine
-  defdelegate get_block(hash),        to: @engine
-  defdelegate get_tx(hash),           to: @engine
+  defdelegate prepare(opts), to: @engine
+  defdelegate has_block?(hash), to: @engine
+  defdelegate get_block(hash), to: @engine
+  defdelegate get_tx(hash), to: @engine
   defdelegate get_txout(hash, index), to: @engine
-  defdelegate get_txouts(list),       to: @engine
+  defdelegate get_txouts(list), to: @engine
 
   @spec start_link(map) :: {:ok, pid} | {:error, term}
   def start_link(opts \\ %{}) do
@@ -34,7 +32,9 @@ defmodule Bitcoin.Node.Storage do
       {:ok, pid} ->
         if @engine.max_height() == nil, do: store_block(@genesis_block)
         {:ok, pid}
-      {:error, error} -> {:error, error}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
@@ -42,9 +42,10 @@ defmodule Bitcoin.Node.Storage do
 
   def max_height, do: @engine.max_height()
 
-  def get_blocks_with_height(height) when is_number(height) and height >= 0, do: @engine.get_blocks_with_height(height)
+  def get_blocks_with_height(height) when is_number(height) and height >= 0,
+    do: @engine.get_blocks_with_height(height)
 
-  @spec store_block(Messages.Block.t) :: :ok | {:error, term}
+  @spec store_block(Messages.Block.t()) :: :ok | {:error, term}
   def store_block(%Messages.Block{} = block, opts \\ []) do
     # TODO do we do validationo here or elsewhere?
     # To ensure consistency it would be good to have validation here. If Node.Storage is a genserver,
@@ -54,47 +55,59 @@ defmodule Bitcoin.Node.Storage do
     # and only try to recheck after reorg? (check how core does this)
     # TODO where do we decide the main chain? Sum of difficulty could be cached with the stored block but
     # maybe that's implementation detail of the engine that doesn't need to be exposed here?
-    hash = block |> Bitcoin.Block.hash
+    hash = block |> Bitcoin.Block.hash()
+
     if has_block?(hash) do
-      :ok # or should it be {:error, :already_stored} ?
+      # or should it be {:error, :already_stored} ?
+      :ok
     else
       case block |> block_height() do
         nil ->
           {:error, :no_parent}
-        height when is_number(height) ->
 
+        height when is_number(height) ->
           # Validate and measure the time
-          {validation, vt} = Bitcoin.Util.measure_time fn ->
-            cond do
-              opts[:validate] == false -> :ok
-              true -> validate_block(block, %{height: height})
-            end
-          end
+          {validation, vt} =
+            Bitcoin.Util.measure_time(fn ->
+              cond do
+                opts[:validate] == false -> :ok
+                true -> validate_block(block, %{height: height})
+              end
+            end)
 
           # Persist and measure the time
-          {result, st} = Bitcoin.Util.measure_time fn ->
-            case validation do
-              :ok -> @engine.store_block(block, %{height: height, hash: hash})
-              {:error, reason} -> {{:error, reason}, 0}
-            end
-          end
+          {result, st} =
+            Bitcoin.Util.measure_time(fn ->
+              case validation do
+                :ok -> @engine.store_block(block, %{height: height, hash: hash})
+                {:error, reason} -> {{:error, reason}, 0}
+              end
+            end)
 
-          Logger.info("Storing block #{height} #{result |> inspect} | #{hash |> Bitcoin.Util.hash_to_hex}" <>
-                      "| vt: #{Float.round(vt, 2)}s st: #{Float.round(st, 2)}s tx: #{block.transactions |> length}")
+          Logger.info(
+            "Storing block #{height} #{result |> inspect} | #{hash |> Bitcoin.Util.hash_to_hex()}" <>
+              "| vt: #{Float.round(vt, 2)}s st: #{Float.round(st, 2)}s tx: #{
+                block.transactions |> length
+              }"
+          )
+
           result
       end
     end
   end
 
-  @spec block_height(Bitcoin.Block.t_hash | Messages.Block.t) :: non_neg_integer | :error
+  @spec block_height(Bitcoin.Block.t_hash() | Messages.Block.t()) :: non_neg_integer | :error
   def block_height(block)
 
   def block_height(@genesis_hash), do: 0
   def block_height(@genesis_block), do: 0
-  def block_height(block_hash) when is_binary(block_hash), do: @engine.get_block_height(block_hash)
+
+  def block_height(block_hash) when is_binary(block_hash),
+    do: @engine.get_block_height(block_hash)
+
   def block_height(block) do
     prev_height = block_height(block.previous_block)
-    prev_height && (prev_height + 1)
+    prev_height && prev_height + 1
   end
 
   defp validate_block(block, opts) do
@@ -103,17 +116,17 @@ defmodule Bitcoin.Node.Storage do
     prev_outs =
       block.transactions
       |> Enum.map(fn tx ->
-        tx.inputs |> Enum.map(fn input ->
+        tx.inputs
+        |> Enum.map(fn input ->
           %{hash: hash, index: index} = input.previous_output
           {hash, index}
         end)
       end)
-      |> List.flatten
+      |> List.flatten()
       |> get_txouts
 
     opts = opts |> Map.put(:previous_outputs, prev_outs)
 
     Bitcoin.Block.validate(block, opts)
   end
-
 end

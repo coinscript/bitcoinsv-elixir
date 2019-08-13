@@ -1,7 +1,6 @@
 defmodule Bitcoin.Common do
-
-   # We do everything with __using__ macro so that we can use constants later in code
-   # as something that is known at compilation time (e.g. in guards)
+  # We do everything with __using__ macro so that we can use constants later in code
+  # as something that is known at compilation time (e.g. in guards)
 
   defmacro __using__(_opts) do
     quote do
@@ -26,10 +25,9 @@ defmodule Bitcoin.Common do
 
       # Overwrite with modules defined in config
       @modules (case Application.get_env(:bitcoin, :node, [])[:modules] do
-         nil -> @modules
-        list -> @modules |> Keyword.merge(list)
-      end)
-
+                  nil -> @modules
+                  list -> @modules |> Keyword.merge(list)
+                end)
     end
   end
 end

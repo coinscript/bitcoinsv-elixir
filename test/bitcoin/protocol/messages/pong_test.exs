@@ -3,14 +3,14 @@ defmodule Bitcoin.Protocol.Messages.PongTest do
   alias Bitcoin.Protocol.Messages.Pong
 
   test "parses the ping message" do
-    nonce = 123456790987654321
+    nonce = 123_456_790_987_654_321
 
-    payload = <<177, 196, 237, 27, 76, 155, 182, 1>> # 64 bit int nonce
+    # 64 bit int nonce
+    payload = <<177, 196, 237, 27, 76, 155, 182, 1>>
 
     struct = %Pong{nonce: nonce}
 
     assert Pong.parse(payload) == struct
     assert Pong.serialize(struct) == payload
-
   end
 end

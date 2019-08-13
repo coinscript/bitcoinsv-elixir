@@ -1,5 +1,4 @@
 defmodule Bitcoin.Node.Network.ConnectionManager do
-
   # Reagent connection handler
   defmodule ReagentHandler do
     use Reagent
@@ -46,6 +45,7 @@ defmodule Bitcoin.Node.Network.ConnectionManager do
           # TODO allow ip:port, actually it will only accept IP as a tuple currently
           list -> list |> Enum.each(&connect/1)
         end
+
         {:ok, state}
 
       {:error, :eaddrinuse} ->
@@ -72,7 +72,8 @@ defmodule Bitcoin.Node.Network.ConnectionManager do
     # dynamic plus we can go over limit if some peer connection is already in progress
     # and we add another one
     if num_conn < max_conn do
-      (0..(max_conn - num_conn)) |> Enum.each(fn _ ->
+      0..(max_conn - num_conn)
+      |> Enum.each(fn _ ->
         state |> add_peer()
       end)
     end
@@ -106,9 +107,9 @@ defmodule Bitcoin.Node.Network.ConnectionManager do
     case @modules[:addr].get do
       %NetworkAddress{address: ip, port: port} ->
         connect(ip, port)
+
       nil ->
         Bitcoin.Node.Network.find_more_addrs()
     end
   end
-
 end

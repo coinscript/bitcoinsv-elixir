@@ -1,5 +1,4 @@
 defmodule Bitcoin.Protocol.Messages.Verack do
-
   @moduledoc """
     The verack message is sent in reply to version.
     This message consists of only a message header with the command string "verack".
@@ -14,5 +13,4 @@ defmodule Bitcoin.Protocol.Messages.Verack do
   end
 
   def serialize(_), do: <<>>
-
 end

@@ -1,5 +1,4 @@
 defmodule Bitcoin.Protocol.Messages.Inv do
-
   @moduledoc """
     Allows a node to advertise its knowledge of one or more objects. It can be received unsolicited, or in reply to getblocks.
 
@@ -13,9 +12,8 @@ defmodule Bitcoin.Protocol.Messages.Inv do
   defstruct inventory_vectors: []
 
   @type t :: %__MODULE__{
-    inventory_vectors: list(InventoryVector.t)
-  }
-
+          inventory_vectors: list(InventoryVector.t())
+        }
 
   @spec parse(binary) :: t
   def parse(payload) do
@@ -30,5 +28,4 @@ defmodule Bitcoin.Protocol.Messages.Inv do
   def serialize(%__MODULE__{} = s) do
     s.inventory_vectors |> serialize_items
   end
-
 end

@@ -1,5 +1,4 @@
 defmodule Bitcoin.Protocol.Messages.Mempool do
-
   @moduledoc """
     The mempool message sends a request to a node asking for information about transactions
     it has verified but which have not yet confirmed. The response to receiving this message
@@ -13,6 +12,4 @@ defmodule Bitcoin.Protocol.Messages.Mempool do
 
   def parse(_data), do: %__MODULE__{}
   def serialize(_), do: ""
-
 end
-

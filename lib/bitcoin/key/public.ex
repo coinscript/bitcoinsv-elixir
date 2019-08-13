@@ -1,5 +1,4 @@
 defmodule Bitcoin.Key.Public do
-
   @moduledoc """
   Public key operations.
   """
@@ -20,23 +19,24 @@ defmodule Bitcoin.Key.Public do
   def strict?(pk) do
     cond do
       # Too short
-      byte_size(pk) < 33
-        -> false
+      byte_size(pk) < 33 ->
+        false
 
       # Invaild length for uncompressed key
-      Binary.at(pk, 0) == 0x04 && byte_size(pk) != 65
-        -> false
+      Binary.at(pk, 0) == 0x04 && byte_size(pk) != 65 ->
+        false
 
       # Invalid length for compressed key
-      Binary.at(pk, 0) in [0x02, 0x03] && byte_size(pk) != 33
-        -> false
+      Binary.at(pk, 0) in [0x02, 0x03] && byte_size(pk) != 33 ->
+        false
 
       # Non-canonical: neither compressed nor uncompressed
-      !(Binary.at(pk, 0) in [0x02, 0x03, 0x04])
-        -> false
+      !(Binary.at(pk, 0) in [0x02, 0x03, 0x04]) ->
+        false
 
       # Everything ok
-      true -> true
+      true ->
+        true
     end
   end
 
@@ -48,10 +48,9 @@ defmodule Bitcoin.Key.Public do
   @spec to_address(t) :: binary
   def to_address(pk) do
     pk
-    |> Crypto.sha256
-    |> Crypto.ripemd160
+    |> Crypto.sha256()
+    |> Crypto.ripemd160()
     |> Binary.prepend(@address_prefix[:public])
-    |> Base58Check.encode
+    |> Base58Check.encode()
   end
-
 end

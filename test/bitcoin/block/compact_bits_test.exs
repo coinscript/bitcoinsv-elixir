@@ -11,18 +11,20 @@ defmodule Bitcoin.Block.CompactBitsTest do
     {0x92340000, 0x05009234},
     {0x1234560000000000000000000000000000000000000000000000000000000000, 0x20123456},
     {0x0012, 0x01120000},
-    {0x00ffff0000000000000000000000000000000000000000000000000000, 0x1d00ffff},
-    {0x00000000000404CB000000000000000000000000000000000000000000000000, 0x1b0404cb}
+    {0x00FFFF0000000000000000000000000000000000000000000000000000, 0x1D00FFFF},
+    {0x00000000000404CB000000000000000000000000000000000000000000000000, 0x1B0404CB}
   ]
 
   test "encoding" do
-    @test_cases |> Enum.each(fn {target, nbits} ->
+    @test_cases
+    |> Enum.each(fn {target, nbits} ->
       assert CompactBits.encode(target) == nbits
     end)
   end
-  
+
   test "decoding" do
-    @test_cases |> Enum.each(fn {target, nbits} ->
+    @test_cases
+    |> Enum.each(fn {target, nbits} ->
       assert CompactBits.decode(nbits) == target
     end)
   end

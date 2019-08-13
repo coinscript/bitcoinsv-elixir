@@ -1,5 +1,4 @@
 defmodule Bitcoin.Protocol.Messages.Reject do
-
   @moduledoc """
     The reject message is sent when messages are rejected.
 
@@ -19,24 +18,28 @@ defmodule Bitcoin.Protocol.Messages.Reject do
     0x43 => :checkpoint
   }
 
-  defstruct message: "", # type of message rejected
-            code: 0, # code relating to the rejected message
-            reason: "", # text version of the reason for rejection
-            data: <<>> # Optional extra data provided by some errors. Currently, all errors which provide this field
-                       # fill it with the TXID or block header hash of the object being rejected, so the field is 32 bytes.
+  # type of message rejected
+  defstruct message: "",
+            # code relating to the rejected message
+            code: 0,
+            # text version of the reason for rejection
+            reason: "",
+            # Optional extra data provided by some errors. Currently, all errors which provide this field
+            data: <<>>
+
+  # fill it with the TXID or block header hash of the object being rejected, so the field is 32 bytes.
 
   @type t :: %__MODULE__{
-    message: binary,
-    code: non_neg_integer,
-    reason: binary,
-    data: binary
-  }
+          message: binary,
+          code: non_neg_integer,
+          reason: binary,
+          data: binary
+        }
 
   @spec parse(binary) :: t
   def parse(data) do
-
     {message, payload} = VarString.parse_stream(data)
-    <<code::bytes-size(1),payload::binary>> = payload
+    <<code::bytes-size(1), payload::binary>> = payload
     {reason, data} = VarString.parse_stream(payload)
 
     %__MODULE__{
@@ -45,7 +48,5 @@ defmodule Bitcoin.Protocol.Messages.Reject do
       reason: reason,
       data: data
     }
-
   end
-
 end

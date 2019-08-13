@@ -1,18 +1,18 @@
 defmodule Bitcoin.Protocol.Message.Payload do
-
   require Logger
 
   @command_names Bitcoin.Protocol.Message.command_names()
 
   defimpl String.Chars, for: Payload do
-    @spec to_string(Payload.t) :: String.t
+    @spec to_string(Payload.t()) :: String.t()
     def to_string(data) do
       """
         parsed data:
           #{data.payload |> String.Chars.to_string()}
         raw data:
           #{"0x" <> Base.encode16(data.raw_data)}
-      """ |> String.trim()
+      """
+      |> String.trim()
     end
   end
 
@@ -20,9 +20,9 @@ defmodule Bitcoin.Protocol.Message.Payload do
             message: <<>>
 
   @type t :: %__MODULE__{
-    raw_data: binary,
-    message: binary
-  }
+          raw_data: binary,
+          message: binary
+        }
 
   @spec parse(binary, binary) :: t
   def parse(command, data)
@@ -35,7 +35,6 @@ defmodule Bitcoin.Protocol.Message.Payload do
   end
 
   def parse(command, data) do
-    Logger.error "Unknown command: #{command |> inspect} data[#{byte_size(data)}]"
+    Logger.error("Unknown command: #{command |> inspect} data[#{byte_size(data)}]")
   end
-
 end
