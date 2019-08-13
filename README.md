@@ -6,22 +6,34 @@ we need a flexiable and high performance node implementation for billions of use
 
 ## Simple bitcoinsv wallet
 
-how to send data embeded tx
+**initialize wallet**
+```ex
+w = Bitcoin.Cli.new_wallet "8b559565ec6754895b6f378fa935740e34bb7d9b515ade65c6dc06081e3b63c7" # private key only for testing
+Bitcoin.Cli.get_balance w
 ```
-import Bitcoin.Cli
 
-w = new_wallet "8b559565ec6754895b6f378fa935740e34bb7d9b515ade65c6dc06081e3b63c7" # private key only for testing
-get_balance w
+how to send data embeded tx
+```ex
 outputs = [%{type: "safe", data: "我真牛🍺 "}]
-transfer w, outputs
+Bitcoin.Cli.transfer(w, outputs)
 ```
 
 normal tx(p2pkh)
-```
+```ex
 outputs = [{
     "1PVCqdqyEWGbzyBRLXptjG3n3AzaJtrsFp", # address
     1000 # amount (satoshis)
     }]
+```
+
+**upload file with B:// protocol**
+```ex
+outputs = [
+    Bitcoin.Metanet.B.build_output("./google_logo.png")
+]
+
+# or use upload function
+Bitcoin.Metanet.B.upload(w, "./google_logo.png")
 ```
 
 ## use as a lib

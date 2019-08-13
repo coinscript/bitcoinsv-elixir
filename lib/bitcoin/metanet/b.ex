@@ -5,11 +5,11 @@ defmodule Bitcoin.Metanet.B do
   alias Bitcoin.Cli
 
   def upload(wallet, file_path) do
-    outputs = [build_b(file_path)]
+    outputs = [build_output(file_path)]
     Cli.transfer(wallet, outputs)
   end
 
-  def build_b(file_path) do
+  def build_output(file_path) do
     type = MIME.from_path(file_path)
     content = File.read!(file_path)
 
