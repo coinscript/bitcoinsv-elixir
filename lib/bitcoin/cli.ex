@@ -16,6 +16,15 @@ defmodule Bitcoin.Cli do
     pid
   end
 
+  defdelegate broadcast(hex), to: TxMaker
+
+  defdelegate upload(wallet, file_path), to: Bitcoin.Metanet.B
+
+  def post(w, data) do
+    outputs = [%{type: "safe", data: data}]
+    transfer(w, outputs)
+  end
+
   def init({:hex_private_key, hex_private_key}) do
     bn_private_key = hex2bin(hex_private_key)
     bn_public_key = Key.privkey_to_pubkey(bn_private_key)
@@ -27,8 +36,7 @@ defmodule Bitcoin.Cli do
       bn_public_key: bn_public_key,
       address: address,
       balance: nil,
-      utxos: [],
-      utxo_count: 0
+      utxos: []
     }
 
     Logger.debug(inspect(state))
@@ -43,7 +51,12 @@ defmodule Bitcoin.Cli do
   # wallet, [{address, satoshis}] -> rpc_txid
   def transfer(wallet, outputs, fee_per_byte \\ 1) do
     Logger.debug(inspect(outputs))
-    GenServer.call(wallet, {:transfer, outputs, fee_per_byte}, :infinity)
+    case GenServer.call(wallet, {:transfer, outputs, fee_per_byte}, :infinity) do
+      %{txid: txid, result: {:ok, nil}} ->
+        {:ok, txid}
+      %{result: result} ->
+        {:error, result}
+    end
   end
 
   def handle_call(:get_balance, _, state) do
@@ -53,8 +66,7 @@ defmodule Bitcoin.Cli do
     state = %{
       state
       | balance: sum_of_utxos,
-        utxos: utxos,
-        utxo_count: length(utxos)
+        utxos: utxos
     }
 
     {:reply, state.balance, state}
@@ -73,7 +85,7 @@ defmodule Bitcoin.Cli do
 
     output_count = length(outputs)
 
-    {spendings, outputs} =
+    {spendings, outputs, change_utxo} =
       case get_enough_utxos(
              state.utxos,
              sum_of_outputs,
@@ -84,18 +96,40 @@ defmodule Bitcoin.Cli do
              get_opreturn_size(outputs)
            ) do
         {:no_change, spendings} ->
-          {spendings, outputs}
+          {spendings, outputs, nil}
 
         {:change, change, spendings} ->
-          outputs = outputs ++ [{state.address, change}]
-          {spendings, outputs}
+          change_utxo = {state.address, change}
+          outputs = outputs ++ [change_utxo]
+          {spendings, outputs, change_utxo}
       end
 
     hex_tx = TxMaker.create_p2pkh_transaction(state.bn_private_key, spendings, outputs)
 
-    rpc_txid = TxMaker.broadcast(hex_tx)
+    resp = TxMaker.broadcast(hex_tx)
 
-    {:reply, rpc_txid, state}
+    case resp.result do
+      {:ok, nil} ->
+        case change_utxo do
+          {addr, amount} ->
+            new_utxos =
+              [
+                %{
+                  txid: resp.txid,
+                  # FIXME only collect 2nd utxo now
+                  txindex: 1,
+                  amount: amount,
+                  script: Key.address_to_pkscript(addr) |> Binary.to_hex()
+                } | (state.utxos -- spendings)
+              ]
+            {:reply, resp, %{state | utxos: new_utxos}}
+          nil ->
+            {:reply, resp, %{state | utxos: state.utxos -- spendings}}
+        end
+      _ ->
+        # broadcast failed
+        {:reply, resp, state}
+    end
   end
 
   defp get_sum_of_utxos(utxos) do
@@ -108,7 +142,7 @@ defmodule Bitcoin.Cli do
       size =
         case x do
           %{type: "safe", data: data} ->
-            data = if is_list(data), do: Enum.join(data), else: data
+            data = if is_list(data), do: IO.iodata_to_binary(data), else: data
             byte_size(data)
 
           {_, _} ->
@@ -171,8 +205,9 @@ defmodule Bitcoin.Cli do
 
   def test do
     w = new_wallet("8b559565ec6754895b6f378fa935740e34bb7d9b515ade65c6dc06081e3b63c7")
-    # get_balance w
+    get_balance(w) |> IO.puts()
     # outputs = [%{type: "safe", data: "我真牛🍺 "}]
     # transfer w, outputs
+    w
   end
 end

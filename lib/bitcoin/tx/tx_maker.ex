@@ -29,7 +29,15 @@ defmodule Bitcoin.Tx.TxMaker do
   end
 
   def broadcast(hex) do
-    SvApi.Bitindex.broadcast(hex)
+    txid = get_txid_from_raw_tx(hex)
+    %{
+      txid: txid,
+      result: SvApi.Bitindex.broadcast(hex)
+    }
+  end
+
+  def get_txid_from_raw_tx(hex) do
+    Crypto.double_sha256(Binary.from_hex(hex)) |> Binary.reverse() |> Binary.to_hex()
   end
 
   def address_to_public_key_hash(addr) do

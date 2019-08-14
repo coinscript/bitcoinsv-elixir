@@ -54,4 +54,8 @@ defmodule Bitcoin.Key do
     [:OP_DUP, :OP_HASH160, privkey_to_pubkey_hash(priv), :OP_EQUALVERIFY, :OP_CHECKSIG]
     |> Script.to_binary()
   end
+
+  def address_to_pkscript(addr) do
+    [:OP_DUP, :OP_HASH160, Bitcoin.Tx.TxMaker.address_to_public_key_hash(addr), :OP_EQUALVERIFY, :OP_CHECKSIG] |> Script.to_binary()
+  end
 end
