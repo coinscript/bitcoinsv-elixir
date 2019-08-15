@@ -65,6 +65,14 @@ defmodule Bitcoin.Metanet.B do
   end
 
   defp transfer(output, wallet) do
-    Bitcoin.Cli.transfer(wallet, [output])
+    case Bitcoin.Cli.transfer(wallet, [output]) do
+      {:ok, _} = resp ->
+        resp
+      any ->
+        IO.inspect any
+        # auto retry when error (25 tx limit)
+        IO.gets "hit 25 txs limit, press enter to retry"
+        transfer(output, wallet)
+    end
   end
 end

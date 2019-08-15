@@ -142,8 +142,11 @@ defmodule Bitcoin.Cli do
       size =
         case x do
           %{type: "safe", data: data} ->
-            data = if is_list(data), do: IO.iodata_to_binary(data), else: data
-            byte_size(data)
+            script = TxMaker.safe_type_pkscript(data)
+            byte_size(script)
+
+          %{type: "script", script: script} ->
+            byte_size(script)
 
           {_, _} ->
             0

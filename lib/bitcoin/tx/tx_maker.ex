@@ -122,20 +122,16 @@ defmodule Bitcoin.Tx.TxMaker do
 
           ## what is "safe" type: https://blog.moneybutton.com/2019/08/02/money-button-now-supports-safe-on-chain-data/
           %{type: "safe", data: data} ->
-            data = if is_list(data), do: data, else: [data]
-
-            [
-              0,
-              106,
-              for(x <- data, do: [byte_size(x) |> op_push(), x]) |> IO.inspect()
-            ]
-            |> join()
+            safe_type_pkscript(data)
+          %{type: "script", script: script} ->
+            script
         end
 
       amount =
         case output do
           {_dest, amount} -> amount
           %{type: "safe"} -> 0
+          %{type: "script"} -> 0
         end
 
       [
@@ -147,16 +143,26 @@ defmodule Bitcoin.Tx.TxMaker do
     |> join()
   end
 
+  def safe_type_pkscript(data) do
+    data = if is_list(data), do: data, else: [data]
+
+    [
+      0,
+      106,
+      for(x <- data, do: [byte_size(x) |> op_push(), x]) |> IO.inspect()
+    ]
+    |> join()
+  end
+
   def op_push(size) when size <= 75, do: size
 
   def op_push(size) do
     bytes = :binary.encode_unsigned size, :little
-    op = case byte_size(bytes) do
-      1 -> 0x4c
-      2 -> 0x4d
-      _ -> 0x4e
+    case byte_size(bytes) do
+      1 -> [0x4c, bytes]
+      2 -> [0x4d, bytes]
+      _ -> [0x4e, Binary.pad_trailing(bytes, 4)]
     end
-    [op, bytes]
   end
 
   def newTxIn(script, script_len, txid, txindex, amount) do
